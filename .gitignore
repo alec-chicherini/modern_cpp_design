@@ -338,3 +338,6 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/modern_cpp_design.vcxproj.filters
+/modern_cpp_design.vcxproj
+/modern_cpp_design.sln

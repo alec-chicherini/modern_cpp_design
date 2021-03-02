@@ -127,7 +127,6 @@ int main()
     creator4<XY> i5(6,7);
     std::cout << "i5.x = " << i5.x << std::endl;
     std::cout << "i5.y = " << i5.y << std::endl;
-    ;
    
 };
 
