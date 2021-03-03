@@ -15,7 +15,6 @@ public:
     
 };
 
-
 template<> void C<char,char>::f() { std::cout << "specialised<char,char> func" << std::endl; };
 
 template<class A>
@@ -38,6 +37,8 @@ public:
         auto res = new T(x);
         return *res;
     }
+protected:
+    ~allocator_heap() = default;
 };
 
 template <class T>
@@ -48,6 +49,8 @@ public:
         std::cout << "allocator_stack call" << std::endl;
         return T(x);
     }
+protected:
+    ~allocator_stack()=default;
 };
 
 template<class Policy,class Type,class T>
@@ -56,8 +59,9 @@ public:
     creator_master() {};
     creator_master(T _x)                            { this->x = Policy().create(_x); }
     creator_master(T _x, T _y) :creator_master(_x)  { this->y = Policy().create(_y); }
+protected:
+    ~creator_master() = default;
 };
-
 
 template<class Policy, class Type, class T>
 class creator : public creator_master<Policy, Type, T>
@@ -67,7 +71,6 @@ public:
     creator(T _x, T _y) :creator_master<Policy, Type, T>(_x, _y) {};
 
 };
-
 
 template<template<class>class Policy, template<class>class Type, class T = int>
 class creator2 : public creator_master<Policy<int>, Type<int>, int>
@@ -94,9 +97,73 @@ public:
     creator4(int _x, int _y) :creator_master<Policy, Type<int>, T>(_x,_y) {};
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#include <thread>
+#include <future>
+
+template<typename T>
+struct func_return_t {
+    using type = T;
+};
+
+template <template <class>class ThreadingPolicy, typename ReturnType=int>
+class code_execute : ThreadingPolicy<ReturnType>
+{
+  
+    ReturnType res;
+public:
+
+    code_execute(ReturnType(*func_)())
+    {
+        res = ThreadingPolicy<ReturnType>().launch(func_);
+    }
+
+    ReturnType getResult()
+    {
+        return res;
+    }
+};
+
+
+template<class ReturnType> struct launch_std_async
+{ 
+    ReturnType launch(ReturnType(*func_)())
+    {
+        std::future<ReturnType> fwd = std::async(std::launch::async, func_);
+        std::cout << "launch_std_async" << std::endl;
+        return fwd.get();
+    }
+};
+
+template<class ReturnType> struct launch_this_thread
+{
+    ReturnType launch(ReturnType(*func_)())
+    {
+        std::cout << "launch_this_thread" << std::endl;
+        return func_();
+    }
+};
+
+template<class ReturnType> struct launch_std_thread
+{
+    ReturnType launch(ReturnType(*func_)())
+    {
+        std::cout << "launch_std_thread" << std::endl;
+        ReturnType res;
+        auto func_wrap = [&]() {res=func_();};
+        std::thread tr(func_wrap);
+        tr.join();
+
+        return res;
+    }
+};
+
+
 #endif
+
 int main()
 {
+#ifdef PART1
     C<float, float> c1;
     C<int, float> c2;
     C<float, int> c3;
@@ -127,6 +194,29 @@ int main()
     creator4<XY> i5(6,7);
     std::cout << "i5.x = " << i5.x << std::endl;
     std::cout << "i5.y = " << i5.y << std::endl;
-   
+
+    std::cout << std::endl;
+
+    auto lambda = []()-> int{
+        int count = 1000;
+        auto x = count;
+        while (count--) { x += count;}
+        return x; };
+
+
+    code_execute<launch_std_async, decltype(lambda())> ce1(lambda);
+    std::cout << "ce1.getResult() = " << ce1.getResult() << std::endl;
+
+    code_execute<launch_this_thread, decltype(lambda())> ce2(lambda);
+    std::cout << "ce2.getResult() = " << ce2.getResult() << std::endl;
+
+    code_execute<launch_std_thread, decltype(lambda())> ce3(lambda);
+    std::cout << "ce3.getResult() = " << ce3.getResult() << std::endl;
+
+    code_execute<launch_std_async> ce4(lambda);
+    std::cout << "ce1.getResult() = " << ce4.getResult() << std::endl;
+
+#endif
+
 };
 
