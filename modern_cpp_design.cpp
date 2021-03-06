@@ -195,7 +195,7 @@ To safe_reinterpret_cast(From from)
 }
 
 ////////////////////////////////////2.2////////////////////////////////////////
-class A1 ; class B1 ;
+class A1 {}; class B1;
 class A2 ; class B2 ;
 
 template<class A, class B>
@@ -305,8 +305,29 @@ struct NiftyContainer
 ////////////////////////////////////2.7////////////////////////////////////////
 #include <type_traits>
 #include <vector>
-
+////////////////////////////////////2.8////////////////////////////////////////
+#include <typeinfo>
 #endif
+////////////////////////////////////2.10////////////////////////////////////////
+template<typename T>
+class TypeTraits {
+private:
+    template<class U>
+    struct isPointer {
+        enum { result = false };
+    };
+
+    template<class U>
+    struct isPointer<U*> {
+        enum { result = true };
+    };
+    template<class U> struct unConst          {typedef U result;};
+    template<class U> struct unConst<const U> { typedef U result; };
+
+public:
+enum { isPtr = isPointer<T>::result };
+typedef unConst<T>::result UnConst;
+};
 
 int main()
 {
@@ -403,8 +424,30 @@ int main()
     std::cout << std::is_same<double, int>::value << " "
               << std::is_same<int, std::int32_t>::value << " "
               << std::is_same<int, std::int64_t>::value << std::endl;
+    std::cout << std::endl;
+    ////////////////////////////////////2.8////////////////////////////////////////
 
+    int x28(4);
+    std::cout << typeid(int).name() << std::endl;
+    std::cout << typeid(int&).name() << std::endl;
+    std::cout << typeid(int&&).name() << std::endl;
+    std::cout << typeid(A1).name() << std::endl;
+    
+    //std::cout << tinfo<<std::endl;
+    std::cout << std::endl;
 
+    ////////////////////////////////////2.10////////////////////////////////////////
+    int i_value;
+    int* i_ptr;
+
+   std::cout <<"is i_value ptr? = "<< TypeTraits<decltype(i_value)>::isPtr<<std::endl;
+   std::cout <<"is i_ptr ptr?   = " << TypeTraits<decltype(i_ptr)>::isPtr << std::endl;
+
+   const int const_int(4);
+   std::cout << "const_int = " << boost_type_name<decltype(const_int)>() << std::endl;
+  
+   TypeTraits<decltype(const_int)>::UnConst some_int(5);
+   std::cout << "some_int  = " << boost_type_name<decltype(some_int)>() << std::endl;
 
 #endif
 };
