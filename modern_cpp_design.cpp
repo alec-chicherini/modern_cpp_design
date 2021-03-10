@@ -16,7 +16,8 @@ std::string boost_type_name()
 
 //PART1 strategy class develepment
 //PART2 tools
-#define PART2
+//PART3 TypeList
+#define PART3
 
 #ifdef PART1
 
@@ -307,7 +308,7 @@ struct NiftyContainer
 #include <vector>
 ////////////////////////////////////2.8////////////////////////////////////////
 #include <typeinfo>
-#endif
+
 ////////////////////////////////////2.10////////////////////////////////////////
 template<typename T>
 class TypeTraits {
@@ -328,6 +329,105 @@ public:
 enum { isPtr = isPointer<T>::result };
 typedef unConst<T>::result UnConst;
 };
+#endif
+
+#ifdef PART3
+
+
+
+template <typename ...Ts>
+struct newTypeList
+{
+    newTypeList()
+    {
+        std::cout << sizeof...(Ts) << std::endl;
+ 
+    }
+
+    template <int N>
+    using Ntype = typename std::tuple_element_t<N, std::tuple<Ts...>>;
+};
+
+#include <tuple>
+
+class Widget {};
+class ScrollBar     :public Widget {};
+class Button        :public Widget {};
+class GraphicButton :public Button { GraphicButton() {}; };
+
+#define SUPERSUBCLASS(BASE,DERIVED) std::cout<< "std::is_base_of<"<<boost_type_name<BASE>()<<","<<boost_type_name<DERIVED>()<<"> = "<<std::is_base_of<BASE, DERIVED>()<<std::endl;
+
+////////////////////////////////////3.13////////////////////////////////////////
+
+template<template<class>class TargetClass, class ... Ts>
+struct GenScatterHierarchy:TargetClass<Ts>... {
+
+    GenScatterHierarchy() {};
+
+    template<typename T>
+    T getValue()
+    {
+        return (static_cast<TargetClass<T>>(*this)).value_;
+    }
+
+    template<typename T>
+    void setValue(T x) {
+
+        (static_cast<TargetClass<T>&>(*this)).value_ = x;
+    }
+};
+
+
+template<class T>
+struct Holder
+{
+    T value_;
+};
+
+
+template<typename T, typename ...Ts>
+class trait {
+    typedef T head ;
+    typedef Ts tail ;
+};
+
+template<class Base, class T>
+class EventHandler : public Base
+{
+public:
+    virtual void OnEvent(T& obj) {};
+};
+
+template 
+<
+    template<class Type, class Base>class TargetClass,
+    class Base,
+    class T,
+    class ... Ts
+>
+struct GenLinearHierarchy : 
+    public TargetClass
+    < 
+    T,
+    GenLinearHierarchy<TargetClass, Base,Ts...>
+    >
+{};
+
+
+template 
+<
+    template<class Base, class T>class TargetClass,
+    class Base,
+    class T
+>
+struct GenLinearHierarchy<TargetClass,Base,T> : public TargetClass<Base, T>
+{};
+
+
+
+
+#endif
+
 
 int main()
 {
@@ -448,6 +548,43 @@ int main()
   
    TypeTraits<decltype(const_int)>::UnConst some_int(5);
    std::cout << "some_int  = " << boost_type_name<decltype(some_int)>() << std::endl;
+
+#endif
+
+#ifdef PART3
+   //creating and out size
+   newTypeList<Widget, ScrollBar, Button,GraphicButton> nt1;
+
+   //access to specified number of type in pack
+   std::cout << boost_type_name <decltype(nt1)::Ntype<0>>() << std::endl;
+   std::cout << boost_type_name <decltype(nt1)::Ntype<1>>() << std::endl;
+   std::cout << boost_type_name <decltype(nt1)::Ntype<2>>() << std::endl;
+   std::cout << boost_type_name <decltype(nt1)::Ntype<3>>() << std::endl;
+
+   //derived fromTo
+   //std::cout<< "std::is_base_of<Widget, Button>() = "<<std::is_base_of<Widget, Button>()<<std::endl;
+   SUPERSUBCLASS(Widget, Button);
+   SUPERSUBCLASS(Widget, ScrollBar);
+   SUPERSUBCLASS(GraphicButton, Button);
+   SUPERSUBCLASS(Button, GraphicButton);
+   SUPERSUBCLASS(GraphicButton, Widget);
+   SUPERSUBCLASS(Button, Widget);
+
+   GenScatterHierarchy<Holder, int, float> obj;
+  
+  //Holder<std::string>::value_="4";
+
+  std::cout << (static_cast<Holder<int>  &>(obj)).value_ << std::endl;
+  std::cout << (static_cast<Holder<float>&>(obj)).value_ << std::endl;
+
+  obj.setValue(int(4));
+  obj.setValue(float(5.6));
+
+  std::cout << obj.getValue<int>  () << std::endl;
+  std::cout << obj.getValue<float>() << std::endl;
+
+  GenLinearHierarchy<EventHandler, Widget, Button, GraphicButton> LinearHierarchyObj;
+
 
 #endif
 };
