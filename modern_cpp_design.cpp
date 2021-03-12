@@ -17,7 +17,8 @@ std::string boost_type_name()
 //PART1 strategy class develepment
 //PART2 tools
 //PART3 TypeList
-#define PART3
+//PART4 small objects in memory
+#define PART4
 
 #ifdef PART1
 
@@ -353,7 +354,7 @@ struct newTypeList
 class Widget {};
 class ScrollBar     :public Widget {};
 class Button        :public Widget {};
-class GraphicButton :public Button { GraphicButton() {}; };
+class GraphicButton :public Button {};
 
 #define SUPERSUBCLASS(BASE,DERIVED) std::cout<< "std::is_base_of<"<<boost_type_name<BASE>()<<","<<boost_type_name<DERIVED>()<<"> = "<<std::is_base_of<BASE, DERIVED>()<<std::endl;
 
@@ -384,50 +385,94 @@ struct Holder
     T value_;
 };
 
-
-template<typename T, typename ...Ts>
-class trait {
-    typedef T head ;
-    typedef Ts tail ;
+template<class T, class ...Ts>
+struct trait {
+    using type =  typename T ;
 };
 
-template<class Base, class T>
-class EventHandler : public Base
+template<class T,class ... Ts>
+struct delete_untill_t {
+    
+    
+};
+
+struct null_class {};
+
+template<class T, class... Ts>
+struct EventHandler : public EventHandler<Ts...>
+{
+    EventHandler() {};
+    
+    virtual void OnEvent(T& obj) {std::cout<<"onEvent call - > object type : "<< boost_type_name<T>()<<std::endl; };
+
+    void onEventCall(T& obj)
+    {//how to choose what to cast here to choose correct instance???
+        static_cast<EventHandler<T,Ts...>&>(*this).OnEvent(obj);
+        //static_cast<EventHandler<delete_untill_t<decltype(obj),Ts...>::result>&>(*this).OnEvent(obj);
+    }
+};
+
+template<class T>
+struct EventHandler<T> : public null_class
 {
 public:
-    virtual void OnEvent(T& obj) {};
+    EventHandler() {};
+
+    virtual void OnEvent(T obj) final { std::cout << "onEvent call - > object type : " << boost_type_name<T>() << std::endl; };
+
+    void onEventCall(T& obj)
+    {//how to choose what to cast here to choose correct instance???
+        static_cast<EventHandler<T, Ts...>&>(*this).OnEvent(obj);
+    }
 };
 
-template 
-<
-    template<class Type, class Base>class TargetClass,
-    class Base,
-    class T,
-    class ... Ts
->
-struct GenLinearHierarchy : 
-    public TargetClass
-    < 
-    T,
-    GenLinearHierarchy<TargetClass, Base,Ts...>
-    >
-{};
+//EventHandler<nullptr_t, Widget, Button, GraphicButton> EventHandlerObj;
 
-
-template 
-<
-    template<class Base, class T>class TargetClass,
-    class Base,
-    class T
->
-struct GenLinearHierarchy<TargetClass,Base,T> : public TargetClass<Base, T>
-{};
-
-
-
+////first
+//template
+//<
+//    template<class Type, class Base>class TargetClass,
+//    class Base=nullptr_t,
+//    class ... Ts
+//>
+//struct GenLinearHierarchy {};
+//
+////all others
+//template 
+//<
+//    template<class Type, class Base>class TargetClass,
+//    class Base,
+//    class T,
+//    class ... Ts
+//>
+//struct GenLinearHierarchy<TargetClass,Base,T,Ts...> :
+//    public TargetClass
+//    < 
+//    T,
+//    typename GenLinearHierarchy<TargetClass, Base,Ts...>::type
+//    >
+//{
+//    using type = typename T;
+//};
+//
+//
+////last
+//template 
+//<
+//    template<class Type, class Base>class TargetClass,
+//    class Base,
+//    class T
+//>
+//struct GenLinearHierarchy<TargetClass,Base,T> : public TargetClass<T, Base>
+//{
+//    using type = typename T;
+//};
 
 #endif
 
+#ifdef PART4
+
+#endif
 
 int main()
 {
@@ -560,7 +605,7 @@ int main()
    std::cout << boost_type_name <decltype(nt1)::Ntype<1>>() << std::endl;
    std::cout << boost_type_name <decltype(nt1)::Ntype<2>>() << std::endl;
    std::cout << boost_type_name <decltype(nt1)::Ntype<3>>() << std::endl;
-
+   std::cout << std::endl;
    //derived fromTo
    //std::cout<< "std::is_base_of<Widget, Button>() = "<<std::is_base_of<Widget, Button>()<<std::endl;
    SUPERSUBCLASS(Widget, Button);
@@ -570,6 +615,7 @@ int main()
    SUPERSUBCLASS(GraphicButton, Widget);
    SUPERSUBCLASS(Button, Widget);
 
+   //hierarchy
    GenScatterHierarchy<Holder, int, float> obj;
   
   //Holder<std::string>::value_="4";
@@ -582,10 +628,29 @@ int main()
 
   std::cout << obj.getValue<int>  () << std::endl;
   std::cout << obj.getValue<float>() << std::endl;
+  std::cout << std::endl;
+  //GenLinearHierarchy<EventHandler, Widget, Button, GraphicButton> LinearHierarchyObj;
+  
+  EventHandler<Widget, Button, GraphicButton> EventHandlerObj;
+  
+  Widget w; Button b; GraphicButton gb;
 
-  GenLinearHierarchy<EventHandler, Widget, Button, GraphicButton> LinearHierarchyObj;
+  EventHandlerObj.OnEvent(w);
+  EventHandlerObj.OnEvent(b);
+  EventHandlerObj.OnEvent(gb);
+  static_cast<EventHandler<Button,GraphicButton>&>(EventHandlerObj).OnEvent(b);
+  static_cast<EventHandler<GraphicButton>&>(EventHandlerObj).OnEvent(gb);
 
+  EventHandlerObj.onEventCall(gb);
+  EventHandlerObj.onEventCall(b);
+  EventHandlerObj.onEventCall(w);
+
+  std::cout << std::endl;
 
 #endif
+
+#ifdef PART4
+
+#endif 
 };
 
