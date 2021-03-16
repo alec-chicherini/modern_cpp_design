@@ -390,14 +390,30 @@ struct trait {
     using type =  typename T ;
 };
 
-template<class T,class ... Ts>
-struct delete_untill_t {
+
+#include <tuple>
+template<typename...Ts>
+using tuple_cat_t = decltype(std::tuple_cat(std::declval<Ts>()...));
+
+template<class T, class ... Ts>
+using delete_untill_T = tuple_cat_t
+<
+    typename std::conditional
+    <
+    std::is_same_v<T,Ts>||false,
+    std::tuple<Ts>,
+    std::tuple<>
+    >::type...
+
+> ;
+
     
-    
-};
+
+
 
 struct null_class {};
 
+//EventHandler<Widget, Button, GraphicButton> EventHandlerObj;
 template<class T, class... Ts>
 struct EventHandler : public EventHandler<Ts...>
 {
@@ -422,9 +438,11 @@ public:
 
     void onEventCall(T& obj)
     {//how to choose what to cast here to choose correct instance???
-        static_cast<EventHandler<T, Ts...>&>(*this).OnEvent(obj);
+        static_cast<EventHandler<T>&>(*this).OnEvent(obj);
     }
 };
+
+
 
 //EventHandler<nullptr_t, Widget, Button, GraphicButton> EventHandlerObj;
 
@@ -471,7 +489,8 @@ public:
 #endif
 
 #ifdef PART4
-
+#include <vector>
+#include <array>
 #endif
 
 int main()
@@ -647,10 +666,50 @@ int main()
 
   std::cout << std::endl;
 
+  std::cout << boost_type_name <decltype(EventHandlerObj)><< std::endl;
+
+
+  delete_untill_T<decltype(b), Widget, Button, GraphicButton> TupleTypes;
+  std::cout << boost_type_name <decltype(TupleTypes)> << std::endl;
+
+
 #endif
 
 #ifdef PART4
 
+  int x = 1 + 2;
+
+  int& x2 = *new int(3 + 4);
+  std::cout << "x = " << x << " x2 = " << x2 << std::endl;
+  delete &x2;
+
+  constexpr int count = 10000;
+  auto stringP = (std::string*)std::malloc(count * sizeof(std::string));
+ 
+  std::vector<std::string> stringVec;
+
+  std::array<std::string, count> stringArray;
+
+  int c = count;
+  while (c--)
+  {
+      new(stringP + c) std::string(std::to_string(c));
+      stringVec.push_back(std::to_string(c));
+      stringArray[c] = std::to_string(c);
+  }
+
+  std::cout << "sizeof(stringP) = " << sizeof(std::string) * count << std::endl;
+  std::cout << "sizeof(stringVec) = " << sizeof(stringVec)+sizeof(std::string)* stringVec.capacity() << std::endl;
+  std::cout << "sizeof(stringArray) = " << sizeof(stringArray) << std::endl;
+
+  using std::string;
+  c = count;
+  while (c--)
+  {
+      stringP[c].~string();
+  }
+  std::free(stringP);
+
 #endif 
-};
+ };
 
