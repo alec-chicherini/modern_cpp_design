@@ -18,7 +18,7 @@ std::string boost_type_name()
 //PART2 tools
 //PART3 TypeList
 //PART4 small objects in memory
-#define PART4
+#define PART3
 
 #ifdef PART1
 
@@ -378,113 +378,80 @@ struct GenScatterHierarchy:TargetClass<Ts>... {
     }
 };
 
-
 template<class T>
 struct Holder
 {
     T value_;
 };
 
-template<class T, class ...Ts>
-struct trait {
-    using type =  typename T ;
+//https://stackoverflow.com/a/66627180/12575933
+template<class T, class, class ...Ts>
+struct delete_untill_ :delete_untill_<T, Ts...> {};
+
+template<class T, class...Ts>
+struct delete_untill_<T, T, Ts...>
+{
+    using type = std::tuple<T,Ts...>;
 };
 
+template<typename ... Ts>
+using delete_untill_T = typename delete_untill_<Ts...>::type;
 
-#include <tuple>
-template<typename...Ts>
-using tuple_cat_t = decltype(std::tuple_cat(std::declval<Ts>()...));
-
-template<class T, class ... Ts>
-using delete_untill_T = tuple_cat_t
-<
-    typename std::conditional
-    <
-    std::is_same_v<T,Ts>||false,
-    std::tuple<Ts>,
-    std::tuple<>
-    >::type...
-
-> ;
-
-    
-
+//template<typename...Ts>
+//using tuple_cat_t = decltype(std::tuple_cat(std::declval<Ts>()...));
+//
+//template<class T, class ... Ts>
+//using delete_untill_T = tuple_cat_t
+//<
+//    typename std::conditional
+//    <
+//    std::is_same_v<T,Ts>||false,
+//    std::tuple<Ts>,
+//    std::tuple<>
+//    >::type...
+//
+//> ;
 
 
 struct null_class {};
+#include <type_traits>
+template<typename F, typename... Args>
+using call_t = decltype(std::declval<F>()(std::declval<Args>()...));
 
-//EventHandler<Widget, Button, GraphicButton> EventHandlerObj;
+
 template<class T, class... Ts>
 struct EventHandler : public EventHandler<Ts...>
 {
     EventHandler() {};
     
     virtual void OnEvent(T& obj) {std::cout<<"onEvent call - > object type : "<< boost_type_name<T>()<<std::endl; };
-
-    void onEventCall(T& obj)
-    {//how to choose what to cast here to choose correct instance???
-        static_cast<EventHandler<T,Ts...>&>(*this).OnEvent(obj);
-        //static_cast<EventHandler<delete_untill_t<decltype(obj),Ts...>::result>&>(*this).OnEvent(obj);
+    
+    template<class objType>
+    void onEventCall(objType& obj)
+    {
+      delete_untill_T<objType, T, Ts...> del_tup;
+      auto res_del_tuple = rewrap_args(del_tup);
+      static_cast<decltype(res_del_tuple) & > (*this).OnEvent(obj);
     }
+
+    template <typename ...Args>
+    EventHandler<Args...> rewrap_args(std::tuple<Args...>& t) { return EventHandler<Args...>(); };
 };
 
 template<class T>
 struct EventHandler<T> : public null_class
 {
+    std::tuple<T> params;
 public:
     EventHandler() {};
 
     virtual void OnEvent(T obj) final { std::cout << "onEvent call - > object type : " << boost_type_name<T>() << std::endl; };
 
-    void onEventCall(T& obj)
+    void onEventCall(T obj)
     {//how to choose what to cast here to choose correct instance???
         static_cast<EventHandler<T>&>(*this).OnEvent(obj);
     }
 };
-
-
-
-//EventHandler<nullptr_t, Widget, Button, GraphicButton> EventHandlerObj;
-
-////first
-//template
-//<
-//    template<class Type, class Base>class TargetClass,
-//    class Base=nullptr_t,
-//    class ... Ts
-//>
-//struct GenLinearHierarchy {};
-//
-////all others
-//template 
-//<
-//    template<class Type, class Base>class TargetClass,
-//    class Base,
-//    class T,
-//    class ... Ts
-//>
-//struct GenLinearHierarchy<TargetClass,Base,T,Ts...> :
-//    public TargetClass
-//    < 
-//    T,
-//    typename GenLinearHierarchy<TargetClass, Base,Ts...>::type
-//    >
-//{
-//    using type = typename T;
-//};
-//
-//
-////last
-//template 
-//<
-//    template<class Type, class Base>class TargetClass,
-//    class Base,
-//    class T
-//>
-//struct GenLinearHierarchy<TargetClass,Base,T> : public TargetClass<T, Base>
-//{
-//    using type = typename T;
-//};
 
 #endif
 
@@ -657,20 +624,14 @@ int main()
   EventHandlerObj.OnEvent(w);
   EventHandlerObj.OnEvent(b);
   EventHandlerObj.OnEvent(gb);
+  std::cout << std::endl;
+  static_cast<EventHandler<Widget,Button, GraphicButton>&>(EventHandlerObj).OnEvent(w);
   static_cast<EventHandler<Button,GraphicButton>&>(EventHandlerObj).OnEvent(b);
   static_cast<EventHandler<GraphicButton>&>(EventHandlerObj).OnEvent(gb);
-
+  std::cout << std::endl;
   EventHandlerObj.onEventCall(gb);
   EventHandlerObj.onEventCall(b);
   EventHandlerObj.onEventCall(w);
-
-  std::cout << std::endl;
-
-  std::cout << boost_type_name <decltype(EventHandlerObj)><< std::endl;
-
-
-  delete_untill_T<decltype(b), Widget, Button, GraphicButton> TupleTypes;
-  std::cout << boost_type_name <decltype(TupleTypes)> << std::endl;
 
 
 #endif
