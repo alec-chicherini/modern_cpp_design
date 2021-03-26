@@ -18,7 +18,7 @@ std::string boost_type_name()
 //PART2 tools
 //PART3 TypeList
 //PART4 small objects in memory
-#define PART3
+#define PART5
 
 #ifdef PART1
 
@@ -460,6 +460,75 @@ public:
 #include <array>
 #endif
 
+#ifdef PART5
+
+
+void A() { std::cout << "A call" << std::endl; };
+void B() { std::cout << "B call" << std::endl; };
+
+
+#include<functional>
+#include<tuple>
+#include<type_traits>
+
+template<class F>
+struct Functor
+{
+    F* pF;
+
+    Functor(F& f) { pF = &f; };
+
+    //template<typename T>
+    //Functor(Functor& f, T param)
+    //{
+    //    auto pBF = std::bind_front(f.pF, param);
+    //    pF = &pBF;
+    //};
+    //
+
+
+    //template<typename T>
+    //auto operator()(T param) { return std::invoke(*pF, param);};
+
+    template<typename ...Ts>
+    //auto operator()(Ts...params) { return std::apply(*pF, std::make_tuple(params...)); };
+    auto operator()(Ts...params) { return std::invoke(*pF, params...); };
+
+    template<typename OBJ, typename ...Ts>
+    auto operator()(OBJ obj,Ts...params) { return std::invoke(*pF,obj, params...); };
+
+};
+
+template<typename F,typename T>
+Functor(Functor<F> f, T param)->Functor<decltype(*f.pF)>;
+
+struct C
+
+{
+    void memberFunc(int i, float f) 
+    {
+            std::cout << "call C::func(" << i << "," << f << ")" << std::endl;
+    }
+};
+
+void func(int i, float f) {
+    std::cout << "call func(" << i << "," << f << ")" << std::endl;
+};
+
+struct TestFunctor
+{
+
+    void operator()(int i, float f) {
+        std::cout << "call functor(" << i << "," << f << ")" << std::endl;
+    }
+
+};
+
+auto lambda = [](int i, float f) {std::cout << "call lambda(" << i << "," << f << ")" << std::endl; };
+
+
+
+#endif
 int main()
 {
 #ifdef PART1
@@ -672,5 +741,37 @@ int main()
   std::free(stringP);
 
 #endif 
+
+#ifdef PART5
+  void (*pA)() = &A;
+  void (*pB)() = &B;
+  A();
+  B();
+  pA();
+  pB();
+  (*pA)();
+  (*pB)();
+  pA = &B;
+  pB = &A;
+  pA();
+  pB();
+
+  TestFunctor functor;
+  auto pMemberFunc = &C::memberFunc;
+
+  Functor cmd1(functor); 
+  Functor cmd2(func);
+  Functor cmd3(lambda);
+  Functor cmd4(pMemberFunc);
+ /* Functor cmd5(cmd2, 10);*/
+  
+  cmd1(1, 2.3f);
+  cmd2(4, 5.6f);
+  cmd3(7, 8.9f);
+  cmd4(C(),10, 11.12f);
+  //cmd5(15);
+
+
+#endif
  };
 
