@@ -16,7 +16,9 @@ std::string boost_type_name()
 //PART2 tools
 //PART3 TypeList
 //PART4 small objects in memory
-#define PART5
+//PART5 Functor class
+//PART6 Singleton
+#define PART6
 
 #ifdef PART1
 
@@ -516,6 +518,118 @@ auto lambda = [](int i, float f) {std::cout << "call lambda(" << i << "," << f <
 
 
 #endif
+
+#ifdef PART6
+
+void atexit_1();
+void atexit_2();
+
+static int x = std::atexit(atexit_1);
+static int y = std::atexit(atexit_2);
+
+void atexit_1()
+{std::cout << "atexit 1 call. x = " <<x<< std::endl;}
+
+void atexit_2()
+{std::cout << "atexit 2 call. y = " <<y<< std::endl;}
+
+///////////////////////Singleton///////////////////////
+#include <memory>
+#include<type_traits>
+
+template<typename T>
+struct Creator {
+    
+    struct Type;
+    using type_T = typename std::pointer_traits<T>::rebind<Type>;
+
+    virtual type_T Create() = 0;
+    //virtual std::unique_ptr<T> Create() = 0;
+   // virtual void Destroy(type_T t) = 0;
+   // virtual ~Creator() {};
+};
+
+template<typename T>
+struct CreateStatic :public Creator<T>
+{
+    static T* Create()  {
+        static T* obj = new T();;
+        return obj;
+    }
+
+    static void Destroy(T* obj) {delete obj;}
+
+    ~CreateStatic() {};
+};
+
+template<typename T>
+struct CreateUsingNew :public Creator<T>
+{
+    T* Create() { return new T; }
+    void Destroy(T* obj) { delete obj; }
+
+    ~CreateUsingNew() {};
+};
+
+#include <memory>
+template<typename T>
+struct CreateUsingUniquePtr :public Creator<T>
+{
+    std::unique_ptr<T> Create() { return std::move(std::make_unique<T>());}
+    void Destroy(std::unique_ptr<T> obj) {obj.release();}
+
+    ~CreateUsingUniquePtr() {};
+};
+
+template<typename T>
+struct Lifetimer
+{
+
+};
+
+template<typename T>
+struct Threading
+{
+
+};
+
+
+template<
+    class T,
+    template<class> class CreationPolicy,
+    template<class> class LifetimePolicy,
+    template<class> class ThreadingModel,
+    int lifetime = 0>
+class SingletonCreator
+{
+    using CreateReturnType = decltype(std::declval<CreationPolicy<T>>().Create());
+
+public:
+    CreateReturnType Instance()
+    {
+        if (!_pInstance)
+        {
+            ThreadingModel<T>::LockGuard();
+            if (!_pInstance)
+            {
+                _pInstance = CreationPolicy<T>::Create();
+                //LifetimePolicy<T>::ScheduleDestruction(&DestroySingleton);
+            }
+        }
+        return _pInstance;
+    };
+
+private:
+     CreateReturnType  _pInstance = nullptr;
+     
+};
+
+////////////////////////////////////////////////////////
+struct KeyboardImpl { std::string state = "Keyboard Ok"; }; using Keyboard = typename SingletonCreator<KeyboardImpl, CreateUsingNew, Lifetimer, Threading, 1>;
+struct DisplayImpl { std::string state = "Display Ok"; }; using Display = typename SingletonCreator<DisplayImpl, CreateStatic, Lifetimer, Threading,1>;
+struct LogImpl { std::string state = "Log Ok"; }; using Log = typename SingletonCreator<LogImpl, CreateUsingUniquePtr, Lifetimer, Threading,2>;
+#endif
+
 int main()
 {
 #ifdef PART1
@@ -761,6 +875,26 @@ int main()
   cmd6(16, 17.18);
   
 
+#endif
+
+#ifdef PART6
+
+
+  int x = 1;
+  int y = 3;
+  ::x = 5;
+  ::y = 7;
+
+  static int* p=new int(9);
+  std::cout <<" *p = " << *p << std::endl;
+  new(p) int(10);
+  std::cout <<" *p = " << *p << std::endl;
+
+ // Keyboard K;// std::cout<<K.Instance()->state<<std::endl;
+ // Display D;// std::cout << D.Instance()->state << std::endl;
+ // Log L;// std::cout << L.Instance()->state << std::endl;
+
+  std::cout << "returning from main" << std::endl;
 #endif
  };
 
