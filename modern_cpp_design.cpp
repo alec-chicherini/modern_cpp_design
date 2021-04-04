@@ -12,8 +12,6 @@ std::string boost_type_name()
     return boost::typeindex::type_id_with_cvr<T>().pretty_name();
 }
 
-
-
 //PART1 strategy class develepment
 //PART2 tools
 //PART3 TypeList
@@ -476,19 +474,11 @@ struct Functor
 {
     F* pF;
 
+    template<typename=std::enable_if_t<std::is_same_v<F,Functor>>>
+    Functor(Functor& f) { pF = f.pF; }
+
     Functor(F& f) { pF = &f; };
-
-    //template<typename T>
-    //Functor(Functor& f, T param)
-    //{
-    //    auto pBF = std::bind_front(f.pF, param);
-    //    pF = &pBF;
-    //};
-    //
-
-
-    //template<typename T>
-    //auto operator()(T param) { return std::invoke(*pF, param);};
+    
 
     template<typename ...Ts>
     //auto operator()(Ts...params) { return std::apply(*pF, std::make_tuple(params...)); };
@@ -503,7 +493,6 @@ template<typename F,typename T>
 Functor(Functor<F> f, T param)->Functor<decltype(*f.pF)>;
 
 struct C
-
 {
     void memberFunc(int i, float f) 
     {
@@ -517,11 +506,9 @@ void func(int i, float f) {
 
 struct TestFunctor
 {
-
     void operator()(int i, float f) {
         std::cout << "call functor(" << i << "," << f << ")" << std::endl;
     }
-
 };
 
 auto lambda = [](int i, float f) {std::cout << "call lambda(" << i << "," << f << ")" << std::endl; };
@@ -763,14 +750,16 @@ int main()
   Functor cmd2(func);
   Functor cmd3(lambda);
   Functor cmd4(pMemberFunc);
- /* Functor cmd5(cmd2, 10);*/
-  
+  auto cmd5 = std::bind_front(cmd2, 13);
+  Functor cmd6(cmd1);
+
   cmd1(1, 2.3f);
   cmd2(4, 5.6f);
   cmd3(7, 8.9f);
   cmd4(C(),10, 11.12f);
-  //cmd5(15);
-
+  cmd5(14.15);
+  cmd6(16, 17.18);
+  
 
 #endif
  };
