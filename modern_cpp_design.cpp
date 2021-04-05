@@ -528,82 +528,114 @@ static int x = std::atexit(atexit_1);
 static int y = std::atexit(atexit_2);
 
 void atexit_1()
-{std::cout << "atexit 1 call. x = " <<x<< std::endl;}
+{
+	std::cout << "atexit 1 call. x = " << x << std::endl;
+}
 
 void atexit_2()
-{std::cout << "atexit 2 call. y = " <<y<< std::endl;}
+{
+	std::cout << "atexit 2 call. y = " << y << std::endl;
+}
 
 ///////////////////////Singleton///////////////////////
 #include <memory>
 #include<type_traits>
+#include<concepts>
 
 template<typename T>
 struct Creator {
-    
-    struct Type;
-    using type_T = typename std::pointer_traits<T>::rebind<Type>;
 
-    virtual type_T Create() = 0;
-    //virtual std::unique_ptr<T> Create() = 0;
-   // virtual void Destroy(type_T t) = 0;
-   // virtual ~Creator() {};
+	virtual T* Create() = 0;
+	virtual void Destroy(T* t) = 0;
+	virtual ~Creator() {};
+};
+
+template<typename T>
+struct Creator<std::shared_ptr<T>>
+{
+	virtual std::shared_ptr<T> Create() = 0;
+	virtual  void Destroy(std::shared_ptr<T> t) = 0;
+	virtual ~Creator() {};
 };
 
 template<typename T>
 struct CreateStatic :public Creator<T>
 {
-    static T* Create()  {
-        static T* obj = new T();;
-        return obj;
+	static T* Create() {
+		static T* obj = new T();;
+		return obj;
+	}
+    static void Destroy(T* t)
+    {
+    delete  t;
+    std::cout << "Static version destroyed" << std::endl; 
     }
-
-    static void Destroy(T* obj) {delete obj;}
-
-    ~CreateStatic() {};
+    ~CreateStatic() { };
 };
 
 template<typename T>
 struct CreateUsingNew :public Creator<T>
 {
-    T* Create() { return new T; }
-    void Destroy(T* obj) { delete obj; }
-
-    ~CreateUsingNew() {};
+	static T* Create() { return new T; }
+    static void Destroy(T* t) {
+        delete  t; 
+        std::cout << "New version destroyed" << std::endl; }
+	~CreateUsingNew() {  };
 };
 
-#include <memory>
-template<typename T>
-struct CreateUsingUniquePtr :public Creator<T>
-{
-    std::unique_ptr<T> Create() { return std::move(std::make_unique<T>());}
-    void Destroy(std::unique_ptr<T> obj) {obj.release();}
-
-    ~CreateUsingUniquePtr() {};
-};
 
 template<typename T>
-struct Lifetimer
+struct CreateUsingUniquePtr :public Creator<std::shared_ptr<T>>
 {
-
+    static std::shared_ptr<T> Create() { return std::move(std::make_unique<T>());}
+    static void Destroy(std::shared_ptr<T> t)
+    {
+        t.~shared_ptr();
+        std::cout << "shared_ptr version destroyed" << std::endl;
+    }
+    ~CreateUsingUniquePtr() {  };
 };
 
+#include <thread>
+#include <mutex>
+#include<vector>
+#include<algorithm>
 template<typename T>
 struct Threading
 {
+    virtual void LockGuard() = 0;
+   
+};
 
+template<typename T>
+struct stdmutex :public Threading<T>
+{
+    static void LockGuard()
+    {
+        std::mutex mtx;
+        std::lock_guard<std::mutex> lock(mtx);
+    };
+    void Destroy() {}
+};
+
+template<typename T>
+struct noLock :public Threading<T>
+{
+   static void LockGuard(){};
+   
 };
 
 
 template<
     class T,
     template<class> class CreationPolicy,
-    template<class> class LifetimePolicy,
-    template<class> class ThreadingModel,
-    int lifetime = 0>
+    template<class> class ThreadingModel>
 class SingletonCreator
-{
+{ 
+public:
+    
     using CreateReturnType = decltype(std::declval<CreationPolicy<T>>().Create());
-
+    
 public:
     CreateReturnType Instance()
     {
@@ -613,21 +645,27 @@ public:
             if (!_pInstance)
             {
                 _pInstance = CreationPolicy<T>::Create();
-                //LifetimePolicy<T>::ScheduleDestruction(&DestroySingleton);
+               
             }
         }
-        return _pInstance;
+        return std::move(_pInstance);
     };
 
+    ~SingletonCreator() { CreationPolicy<T>::Destroy(_pInstance); };
 private:
-     CreateReturnType  _pInstance = nullptr;
-     
+   
+    CreateReturnType  _pInstance = nullptr;
+
+  
 };
 
+struct Keyboard_ { std::string state = "Keyboard Ok"; }; 
+using Keyboard =  SingletonCreator<Keyboard_, CreateUsingNew, noLock>;
+struct DisplayImpl { std::string state = "Display Ok"; }; 
+using Display =  SingletonCreator<DisplayImpl, CreateStatic, stdmutex>;
+struct LogImpl { std::string state = "Log Ok"; }; 
+using Log =  SingletonCreator<LogImpl, CreateUsingUniquePtr, stdmutex>;
 ////////////////////////////////////////////////////////
-struct KeyboardImpl { std::string state = "Keyboard Ok"; }; using Keyboard = typename SingletonCreator<KeyboardImpl, CreateUsingNew, Lifetimer, Threading, 1>;
-struct DisplayImpl { std::string state = "Display Ok"; }; using Display = typename SingletonCreator<DisplayImpl, CreateStatic, Lifetimer, Threading,1>;
-struct LogImpl { std::string state = "Log Ok"; }; using Log = typename SingletonCreator<LogImpl, CreateUsingUniquePtr, Lifetimer, Threading,2>;
 #endif
 
 int main()
@@ -890,9 +928,11 @@ int main()
   new(p) int(10);
   std::cout <<" *p = " << *p << std::endl;
 
- // Keyboard K;// std::cout<<K.Instance()->state<<std::endl;
- // Display D;// std::cout << D.Instance()->state << std::endl;
- // Log L;// std::cout << L.Instance()->state << std::endl;
+ Keyboard K; std::cout<<K.Instance()->state<<std::endl;
+ Display D; std::cout << D.Instance()->state << std::endl;
+ Log L; std::cout << L.Instance()->state << std::endl;
+
+ K.Instance();
 
   std::cout << "returning from main" << std::endl;
 #endif
