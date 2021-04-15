@@ -18,7 +18,8 @@ std::string boost_type_name()
 //PART4 small objects in memory
 //PART5 Functor class
 //PART6 Singleton
-#define PART6
+//PART7 Smart ptr
+#define PART7
 
 #ifdef PART1
 
@@ -668,6 +669,122 @@ using Log =  SingletonCreator<LogImpl, CreateUsingUniquePtr, stdmutex>;
 ////////////////////////////////////////////////////////
 #endif
 
+#ifdef PART7
+class A
+{
+public:
+    A() = delete;
+    
+   explicit A(int x) { std::cout << x << std::endl; }
+};
+
+void f(A a) {};
+
+struct refCounter
+{
+    size_t count=0;
+};
+
+template<typename T>
+struct shared
+{
+    static void clone(refCounter* ref) { ref->count++; }
+    static void release(refCounter* ref) { ref->count--; }
+};
+
+template<typename T>
+struct unique
+{
+    static void clone(refCounter* ref) { ref->count = 1; }
+    static void release(refCounter* ref) { ref->count = 0; }
+};
+
+    template
+        <
+        typename T,
+        template<class>class CounterPolicy
+        >
+        class SmartPtr
+    {
+    public:
+        SmartPtr(T value) {
+            pointee = new (T)(value);
+            counter = new refCounter();
+            CounterPolicy<T>::clone(counter);
+        }
+
+        SmartPtr(SmartPtr<T,CounterPolicy>& sp)
+        {
+            pointee = sp.get();
+            counter = sp.getCounter();
+            CounterPolicy<T>::clone(counter);
+        }
+
+        refCounter* getCounter() { return counter; }
+        T* get() { return pointee; }
+
+        size_t use_count() { return counter->count; }
+
+        void operator=(SmartPtr<T, CounterPolicy>& sp)
+        {
+            if (std::is_same_v<decltype(sp), SmartPtr<T,shared>&>) {
+                if (pointee != sp.get())
+                {
+                    auto right_counter = sp.getCounter();
+                    CounterPolicy<T>::release(counter);
+                    CounterPolicy<T>::clone(right_counter);
+
+                    if (counter->count == 0) { this->~SmartPtr(); }
+
+                    this->counter = right_counter;
+                    this->pointee = sp.get();
+
+                }
+            }
+            else if (std::is_same_v<decltype(sp), SmartPtr<T, unique>&>)
+            {
+                    delete this->counter;
+                    delete this->pointee;
+
+                    this->counter = sp.getCounter();
+                    this->pointee = sp.get();
+
+                    sp.setNullptr();
+                  
+            }
+        }
+
+        void setNullptr() {
+            counter = nullptr;
+            pointee = nullptr;
+        };
+
+        void print() {
+            if(counter && pointee)
+            std::cout << "*counter = " << counter->count << " *pointee = " << *pointee<<  std::endl;
+            else
+            std::cout << "*counter = " << "[nullptr]" << " *pointee = " << "[nullptr]" << std::endl;
+        }
+        ~SmartPtr() {
+            if(counter && pointee)
+            if (counter->count>1) 
+                CounterPolicy<T>::release(counter);
+            else
+            {
+                delete counter; delete pointee;
+            }
+        }
+    private:
+        T* pointee;
+        refCounter* counter;
+    };
+
+
+    
+
+
+#endif
+
 int main()
 {
 #ifdef PART1
@@ -935,6 +1052,45 @@ int main()
  K.Instance();
 
   std::cout << "returning from main" << std::endl;
+#endif
+
+#ifdef PART7
+  A a(char('1'));
+  //A b = char('1');
+  f(A(5));
+
+  SmartPtr<int, shared> sp1(15);
+  SmartPtr<int, shared> sp2(sp1);
+  SmartPtr<int, shared> sp3(115);
+  SmartPtr<int, shared> sp4(sp3);
+  sp1.print();
+  sp2.print();
+  sp3.print();
+  sp4.print();
+  sp4=sp1;
+  std::cout<<std::endl;
+  sp1.print();
+  sp2.print();
+  sp3.print();
+  sp4.print();
+  sp3 = sp1;
+
+  std::cout << std::endl;
+  sp1.print();
+  sp2.print();
+  sp3.print();
+  sp4.print();
+
+  SmartPtr<int, unique> sp5(66);
+  SmartPtr<int, unique> sp6(77);
+  std::cout << std::endl;
+  sp5.print();
+  sp6.print();
+
+  sp5 = sp6;
+  sp5.print();
+  sp6.print();
+
 #endif
  };
 
