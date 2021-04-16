@@ -19,7 +19,8 @@ std::string boost_type_name()
 //PART5 Functor class
 //PART6 Singleton
 //PART7 Smart ptr
-#define PART7
+//PART8 Factory
+#define PART8
 
 #ifdef PART1
 
@@ -785,6 +786,266 @@ struct unique
 
 #endif
 
+#include <map>
+#ifdef PART8
+    template
+        <
+        class Product,
+        typename Key,
+        typename Creator = Product*(*)()
+        >
+        class Factory
+    {
+    private:
+        using Map = typename std::map<Key, Creator>;
+        Map creators_;
+    public:
+        bool Register(const Key& id, Creator creator)
+        {
+            const auto [it, success] = creators_.insert(Map::value_type(id,creator));
+            return success;
+        }
+        bool Unregistered(const Key& id)
+        {
+            return creators_.erase(id)==1;
+        }
+
+        Product* CreateObject(const Key& id)
+        {
+            auto it = creators_.find(id);
+            if (it != creators_.end())
+                return (it->second)();
+            else {
+            std::runtime_error("CrateObject(Key&) Error - Wrong key.");
+
+            return nullptr;
+        }
+            return nullptr;
+        }
+    };
+
+    enum class rotateType{ROTATE_CUSTOM, ROTATE_HITBOX, ROTATE_MIDDLE};
+    enum class resizeType{RESIZE_HITBOX , RESIZE_MIDDLE};
+
+    template<typename T=int>
+    class Object
+    {
+    private:
+        T _x;
+        T _y;
+
+    public:
+        virtual void move(T dx, T dy) = 0;
+        virtual void rotate(float degree, rotateType rt= rotateType::ROTATE_MIDDLE, T x=0, T y=0) = 0;
+        virtual void resize(float sx, float sy, resizeType rt = resizeType::RESIZE_HITBOX) = 0;
+        virtual std::string info() = 0;
+
+    };
+
+    struct Color {
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+        uint8_t alpha = 1;
+    }default_color(0,0,0,1);
+
+    //_x,_y - point to rotate. x, y - rotation point, angle - angle to rotate in degrees
+    template<typename T>
+    inline void RotateHelper(T& _x, T& _y, T& x, T& y, float angle) noexcept
+    {
+        T dx = _x - x;
+        T dy = _y - y;
+        _x = (T)(dx * cos(angle) - dy * sin(angle));
+        _y = (T)(dx * sin(angle) + dy * cos(angle));
+        _x += dx;
+        _y += dy;
+    };
+
+    //_x,_y,_w,_h hitbox params for line (x1,y1) - (x2,y2)
+    template<typename T>
+    inline void HitboxHelperLine(T& _x, T& _y, T& _w, T& _h, T& x1, T& y1, T& x2, T& y2) noexcept
+    {
+        _x = std::min(x1, x2);
+        _y = std::min(y1, y2);
+        _w = std::max(x1, x2) - _x;
+        _h = std::max(y1, y2) - _y;
+    };
+
+    template<typename T = int>
+    class Point :public Object<T>
+    {
+    private:
+        T _x;
+        T _y;
+        T _w; //width
+        T _h; //height
+        Color color;
+
+    public:
+        Point() :_x((T)0.0), _y((T)0.0), _h((T)0.0), _w((T)0.0), color(default_color) {};
+        virtual void move(T dx, T dy) override
+        {
+            _x += dx;
+            _y += dy;
+            _w = _x;
+            _h = _y;
+        };
+
+        virtual std::string info() override
+        {
+            std::string res;
+            res += "_x = "; res += std::to_string(_x); res += ";";
+            res += "_y = "; res += std::to_string(_y); res += ";";
+            res += "_w = "; res += std::to_string(_w); res += ";";
+            res += "_h = "; res += std::to_string(_h); res += ";";
+
+            return res;
+        };
+        virtual void rotate(float degree, rotateType rt = rotateType::ROTATE_MIDDLE, T x = 0, T y = 0) override
+        {
+        
+            switch (rt)
+            {
+            case rotateType::ROTATE_CUSTOM:
+            {
+                ::RotateHelper(_x, _y, x, y, degree);
+                _w = _x;
+                _h = _y;
+               
+                break; 
+            }
+            case rotateType::ROTATE_HITBOX:
+                break;
+            case rotateType::ROTATE_MIDDLE:
+                break;
+            default:
+                break;
+            }
+        };
+
+    private:
+        //Point::resize() Error - cannot resize point.
+        virtual void resize(float sx, float sy, resizeType rt = resizeType::RESIZE_HITBOX) override {};
+    };
+
+    template<typename T = int>
+    class Line :public Object<T>
+    {
+    private:
+        T _x;
+        T _y;
+        T _w; //width
+        T _h; //height
+        T _x1, _x2, _y1, _y2;
+        Color color;
+
+    public:
+
+        Line(T x1, T y1, T x2, T y2):_x1(x1), _y1(y1), _x2(x2), _y2(y2), _x((T)0.0f), _y((T)0.0f), color(default_color)
+        {
+            ::HitboxHelperLine(_x, _y, _w, _h, x1, y1, x2, y2);
+
+        }
+        Line() : Line(0,0,0,0){}
+
+        virtual std::string info() override
+        {
+            std::string res;
+            res += "_x = "; res += std::to_string(_x); res += ";";
+            res += "_y = "; res += std::to_string(_y); res += ";";
+            res += "_w = "; res += std::to_string(_w); res += ";";
+            res += "_h = "; res += std::to_string(_h); res += ";";
+            res += "_x1 = "; res += std::to_string(_x1); res += ";";
+            res += "_y1 = "; res += std::to_string(_y1); res += ";";
+            res += "_x2 = "; res += std::to_string(_x2); res += ";";
+            res += "_y2 = "; res += std::to_string(_y2); res += ";";
+            return res;
+        };
+        virtual void move(T dx, T dy) override
+        {
+            _x +=dx;
+            _y +=dy;
+            _x1 += dx; _x2 += dx;
+            _y1 += dy; _y2 += dy;
+        }; 
+
+        virtual void rotate(float degree, rotateType rt = rotateType::ROTATE_MIDDLE, T x = 0, T y = 0) override
+        {
+            switch (rt)
+            {
+            case rotateType::ROTATE_CUSTOM:
+            {            
+            ::RotateHelper(_x1, _y1, x, y, degree);
+            ::RotateHelper(_x2, _y2, x, y, degree);
+            ::HitboxHelperLine(_x, _y, _w, _h, _x1, _y1, _x2, _y2);
+                break; 
+            }
+            case rotateType::ROTATE_HITBOX:
+            {
+                ::RotateHelper(_x1, _y1, _x, _y, degree);
+                ::RotateHelper(_x2, _y2, _x, _y, degree);
+                break;
+            }
+            case rotateType::ROTATE_MIDDLE:
+            {
+                T mx = (T)((_x1 + _x2) / 2.0);
+                T my = (T)((_y1 + _y2) / 2.0);
+                ::RotateHelper(_x1, _y1, mx, my, degree);
+                ::RotateHelper(_x2, _y2, mx, my, degree);
+                ::HitboxHelperLine(_x, _y, _w, _h, _x1, _y1, _x2, _y2);
+                break;
+            }
+            default:
+                break;
+            }
+        };
+
+        virtual void resize(float sx, float sy, resizeType rt = resizeType::RESIZE_HITBOX) override
+        {
+            switch (rt)
+            {
+            case resizeType::RESIZE_HITBOX:
+            {
+				auto max_x = std::max(_x1, _x2);
+				if (_x1 == max_x)_x1 = (T)(max_x - std::min(_x1, _x2) * sx);
+				else _x2 = max_x - std::min(_x1, _x2);
+
+				auto max_y = std::max(_y1, _y2);
+				if (_y1 == max_y)_y1 = (T)(max_y - std::min(_y1, _y2) * sy);
+				else _y2 = max_y - std::min(_y1, _y2);
+
+                ::HitboxHelperLine(_x, _y, _w, _h, _x1, _y1, _x2, _y2);
+
+                break;
+            };
+            case resizeType::RESIZE_MIDDLE:
+            {
+                auto mx = (_x1 + _x2) / 2.0;
+                auto my = (_y1 + _y2) / 2.0;
+
+                _x1 = (T)((_x1 - mx) * sx + mx);
+                _x2 = (T)((_x2 - mx) * sx + mx);
+                _y1 = (T)((_y1 - my) * sx + my);
+                _y2 = (T)((_y2 - my) * sx + my);
+                ::HitboxHelperLine(_x, _y, _w, _h, _x1, _y1, _x2, _y2);
+
+                break;
+            };
+            default:
+                break;
+            }
+        };
+    };
+
+
+    Object<int>* createPoint() { return new Point<int>; }
+    Object<int>* createLine() { return new Line<int>; }
+
+
+
+
+#endif
+
 int main()
 {
 #ifdef PART1
@@ -1090,6 +1351,35 @@ int main()
   sp5 = sp6;
   sp5.print();
   sp6.print();
+
+#endif
+
+#ifdef PART8
+
+  Factory<Object<int>, std::string> fac1;
+  fac1.Register("point", createPoint);
+  fac1.Register("line", createLine);
+
+  auto point1 = fac1.CreateObject("point");
+  auto point2 = fac1.CreateObject("point");
+
+  auto line1 = fac1.CreateObject("line");
+  auto line2 = fac1.CreateObject("line");
+
+  std::cout << point1->info() << std::endl;
+  std::cout << point2->info() << std::endl;
+  std::cout << line1->info() << std::endl;
+  std::cout << line2->info() << std::endl;
+
+  Line<int> line3(0, 0, 15, 20);
+  std::cout << line3.info() << std::endl;
+  line3.move(2, 2);
+  std::cout << line3.info() << std::endl;
+  line3.resize(2, 0.5f);                  //wrong resize!
+  std::cout << line3.info() << std::endl;
+  line3.rotate(180);
+  std::cout << line3.info() << std::endl;
+  
 
 #endif
  };
