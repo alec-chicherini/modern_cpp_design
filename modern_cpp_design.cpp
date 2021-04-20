@@ -20,7 +20,8 @@ std::string boost_type_name()
 //PART6 Singleton
 //PART7 Smart ptr
 //PART8 Factory
-#define PART8
+//PART9 Abstract Factory
+#define PART9
 
 #ifdef PART1
 
@@ -786,8 +787,9 @@ struct unique
 
 #endif
 
-#include <map>
+
 #ifdef PART8
+#include <map>
     template
         <
         class Product,
@@ -1042,6 +1044,83 @@ struct unique
     Object<int>* createLine() { return new Line<int>; }
 
 
+
+
+#endif
+
+#ifdef PART9
+
+    struct Unit { Unit() { std::cout << "Unit ctor. -> "; } };
+
+    struct Archer : public Unit { Archer() { std::cout << "Archer ctor. ->  " ;   } };
+    struct Warior : public Unit { Warior() { std::cout << "Warior ctor. ->  " ;    } };
+    struct Pikeman : public Unit { Pikeman() { std::cout << "Pikeman ctor. ->  " ; } };
+    struct Balista : public Unit { Balista() { std::cout << "Balista ctor. ->  " ; } };
+
+    struct EasyArcher :public Archer { EasyArcher() { std::cout << "EasyArcher ctor. " << std::endl; } };
+    struct HardArcher :public Archer { HardArcher() { std::cout << "HardArcher ctor. " << std::endl; } };
+    struct InsaneArcher :public Archer { InsaneArcher() { std::cout << "InsaneArcher ctor. " << std::endl; } };
+
+    struct EasyWarior :public Warior { EasyWarior() { std::cout << "EasyWarior ctor. " << std::endl; } };
+    struct HardWarior :public Warior { HardWarior() { std::cout << "HardWarior ctor. " << std::endl; } };
+    struct InsaneWarior :public Warior { InsaneWarior() { std::cout << "InsaneWarior ctor. " << std::endl; } };
+
+    struct EasyPikeman :public Pikeman { EasyPikeman() { std::cout << "EasyPikeman ctor. " << std::endl; } };
+    struct HardPikeman :public Pikeman { HardPikeman() { std::cout << "HardPikeman ctor. " << std::endl; } };
+    struct InsanePikeman :public Pikeman { InsanePikeman() { std::cout << "InsanePikeman ctor. " << std::endl; } };
+
+    struct EasyBalista :public Balista { EasyBalista() { std::cout << "EasyBalista ctor. " << std::endl; } };
+    struct HardBalista :public Balista { HardBalista() { std::cout << "HardBalista ctor. " << std::endl; } };
+    struct InsaneBalista :public Balista { InsaneBalista() { std::cout << "InsaneBalista ctor. " << std::endl; } };
+
+	struct AbstractFactoryImpl
+	{
+		virtual Archer* CreateArcher() = 0;
+		virtual Warior* CreateWarior() = 0;
+		virtual Pikeman* CreatePikeman() = 0;
+		virtual Balista* CreateBalista() = 0;
+	};
+
+    struct AbstractFactory:public AbstractFactoryImpl
+    {
+        virtual Archer* CreateArcher() { return new Archer; };
+        virtual Warior* CreateWarior() { return new Warior; };
+        virtual Pikeman* CreatePikeman() { return new Pikeman; };
+        virtual Balista* CreateBalista() { return new Balista; };
+    };
+
+#include <tuple>
+#include <type_traits>
+	template<class...Ts>
+	struct ConcreteFactory :public AbstractFactory
+	{
+        using params = std::tuple<Ts...>;
+        using A = typename std::tuple_element_t<0, params>;
+        using W = typename std::tuple_element_t<1, params>;
+        using P = typename std::tuple_element_t<2, params>;
+        using B = typename std::tuple_element_t<3, params>;
+
+		virtual Archer* CreateArcher()override 
+        {
+            static_assert(std::is_base_of_v<Archer,A>,"Wrong list of types in Concrete Factory: must be <Archer,Warior,Pikeman,Balista>");
+            return new A;
+        };
+		virtual Warior* CreateWarior()override 
+        {
+            static_assert(std::is_base_of_v<Warior, W>, "Wrong list of types in Concrete Factory: must be <Archer,Warior,Pikeman,Balista>");
+            return new W;
+        };
+		virtual Pikeman* CreatePikeman()override 
+        {
+            static_assert(std::is_base_of_v<Pikeman, P>, "Wrong list of types in Concrete Factory: must be <Archer,Warior,Pikeman,Balista>");
+            return new P;
+        };
+		virtual Balista* CreateBalista()override 
+        {
+            static_assert(std::is_base_of_v<Balista, B>, "Wrong list of types in Concrete Factory: must be <Archer,Warior,Pikeman,Balista>");
+            return new B;
+        };
+	};
 
 
 #endif
@@ -1380,6 +1459,35 @@ int main()
   line3.rotate(180);
   std::cout << line3.info() << std::endl;
   
+
+#endif
+
+#ifdef PART9
+
+  using EasyUnitFactory     = typename ConcreteFactory<EasyArcher,EasyWarior, EasyPikeman, EasyBalista>;
+  using HardUnitFactory     = typename ConcreteFactory<HardArcher,HardWarior, HardPikeman, HardBalista>;
+  using InsaneUnitFactory   = typename ConcreteFactory<InsaneArcher,InsaneWarior, InsanePikeman, InsaneBalista>;
+
+  AbstractFactory* pFactory;
+
+  pFactory = new EasyUnitFactory;
+  Warior* pWarior = pFactory->CreateWarior();
+  delete pFactory;
+
+  pFactory = new HardUnitFactory;
+  Archer* pArcher = pFactory->CreateArcher();
+  delete pFactory;
+
+  pFactory = new InsaneUnitFactory;
+  Pikeman* pPikeman = pFactory->CreatePikeman();
+  Balista* pBalista = pFactory->CreateBalista();
+  delete pFactory;
+
+  delete pWarior;
+  delete pArcher;
+  delete pPikeman;
+  delete pBalista;
+
 
 #endif
  };
