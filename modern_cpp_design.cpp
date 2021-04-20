@@ -1050,12 +1050,18 @@ struct unique
 
 #ifdef PART9
 
+#include <tuple>
+#include <type_traits>
+#include <any>
+
     struct Unit { Unit() { std::cout << "Unit ctor. -> "; } };
 
     struct Archer : public Unit { Archer() { std::cout << "Archer ctor. ->  " ;   } };
     struct Warior : public Unit { Warior() { std::cout << "Warior ctor. ->  " ;    } };
     struct Pikeman : public Unit { Pikeman() { std::cout << "Pikeman ctor. ->  " ; } };
     struct Balista : public Unit { Balista() { std::cout << "Balista ctor. ->  " ; } };
+
+   
 
     struct EasyArcher :public Archer { EasyArcher() { std::cout << "EasyArcher ctor. " << std::endl; } };
     struct HardArcher :public Archer { HardArcher() { std::cout << "HardArcher ctor. " << std::endl; } };
@@ -1073,6 +1079,7 @@ struct unique
     struct HardBalista :public Balista { HardBalista() { std::cout << "HardBalista ctor. " << std::endl; } };
     struct InsaneBalista :public Balista { InsaneBalista() { std::cout << "InsaneBalista ctor. " << std::endl; } };
 
+ //version 1
 	struct AbstractFactoryImpl
 	{
 		virtual Archer* CreateArcher() = 0;
@@ -1089,8 +1096,7 @@ struct unique
         virtual Balista* CreateBalista() { return new Balista; };
     };
 
-#include <tuple>
-#include <type_traits>
+
 	template<class...Ts>
 	struct ConcreteFactory :public AbstractFactory
 	{
@@ -1121,6 +1127,49 @@ struct unique
             return new B;
         };
 	};
+
+//version 2
+ 
+
+    template<typename T>
+    struct AbstractFactoryImpl_
+    {
+        virtual T* Create() = 0;
+    };
+
+
+    template<typename T>
+    struct AbstractFactory_:public AbstractFactoryImpl_<T>
+    {
+        virtual T* Create() override
+        {
+            return new T;
+        }
+    };
+
+    //struct Ptr_ {};
+
+
+    template<class ...Ts >
+    struct ConcreteFactory_ :  public AbstractFactory_<Ts>...
+    {
+
+        using params = std::tuple<Ts...>;
+        using A = typename std::tuple_element_t<0, params>;
+        using W = typename std::tuple_element_t<1, params>;
+        using P = typename std::tuple_element_t<2, params>;
+        using B = typename std::tuple_element_t<3, params>;
+
+        template<class T> 
+        T* Create()
+        {
+            if constexpr(std::is_base_of_v<T, A>) return AbstractFactory_<A>::Create();
+            else if constexpr (std::is_base_of_v<T, W>) return AbstractFactory_<W>::Create();
+            else if constexpr (std::is_base_of_v<T, P>) return AbstractFactory_<P>::Create();
+            else if constexpr (std::is_base_of_v<T, B>) return AbstractFactory_<B>::Create();
+        }
+    };
+
 
 
 #endif
@@ -1464,6 +1513,7 @@ int main()
 
 #ifdef PART9
 
+  //version 1
   using EasyUnitFactory     = typename ConcreteFactory<EasyArcher,EasyWarior, EasyPikeman, EasyBalista>;
   using HardUnitFactory     = typename ConcreteFactory<HardArcher,HardWarior, HardPikeman, HardBalista>;
   using InsaneUnitFactory   = typename ConcreteFactory<InsaneArcher,InsaneWarior, InsanePikeman, InsaneBalista>;
@@ -1487,6 +1537,32 @@ int main()
   delete pArcher;
   delete pPikeman;
   delete pBalista;
+
+
+  //version 2
+  std::cout << std::endl;
+  using EasyUnitFactory_ = typename ConcreteFactory_<EasyArcher, EasyWarior, EasyPikeman, EasyBalista>;
+  using HardUnitFactory_ = typename ConcreteFactory_<HardArcher, HardWarior, HardPikeman, HardBalista>;
+  using InsaneUnitFactory_ = typename ConcreteFactory_<InsaneArcher, InsaneWarior, InsanePikeman, InsaneBalista>;
+
+
+  auto pFactory_E = new EasyUnitFactory_;
+  Warior* pWarior_ = pFactory_E->Create<Warior>();
+  delete pFactory_E;
+
+  auto pFactory_H = new HardUnitFactory_;
+  Archer* pArcher_ = pFactory_H->Create<Archer>();
+  delete pFactory_H;
+
+  auto pFactory_I = new InsaneUnitFactory_;
+  Pikeman* pPikeman_ = pFactory_I->Create<Pikeman>();
+  Balista* pBalista_ = pFactory_I->Create<Balista>();
+  delete pFactory_I;
+
+  delete pWarior_;
+  delete pArcher_;
+  delete pPikeman_;
+  delete pBalista_;
 
 
 #endif
