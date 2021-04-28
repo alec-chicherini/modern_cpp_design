@@ -21,7 +21,8 @@ std::string boost_type_name()
 //PART7 Smart ptr
 //PART8 Factory
 //PART9 Abstract Factory
-#define PART9
+//PART10 Visitor
+#define PART10
 
 #ifdef PART1
 
@@ -1202,6 +1203,10 @@ struct unique
 
 #endif
 
+#ifdef PART10
+
+#endif
+
 int main()
 {
 #ifdef PART1
@@ -1619,6 +1624,10 @@ int main()
   auto pHardBalista = create(pFactory_H_, dummyBalista);
   auto pInsanePikeman = create(pFactory_I_, dummyPikeman);
 
+
+#endif
+
+#ifdef PART10
 
 #endif
  };
