@@ -1080,6 +1080,8 @@ struct unique
     struct InsaneBalista :public Balista { InsaneBalista() { std::cout << "InsaneBalista ctor. " << std::endl; } };
 
  //version 1
+
+
 	struct AbstractFactoryImpl
 	{
 		virtual Archer* CreateArcher() = 0;
@@ -1129,8 +1131,6 @@ struct unique
 	};
 
 //version 2
- 
-
     template<typename T>
     struct AbstractFactoryImpl_
     {
@@ -1170,7 +1170,35 @@ struct unique
         }
     };
 
+    //version 3
 
+    template<typename T>
+    struct AbstarctFactoryImpl__
+    {
+        virtual ~AbstarctFactoryImpl__() = default;
+       virtual T* Create(T) = 0;
+    };
+
+    template<typename ...Ts>
+    struct AbstractFactory__ :virtual AbstarctFactoryImpl__<Ts>...
+    {
+        using AbstarctFactoryImpl__<Ts>::Create...;
+    };
+
+    template<typename T1, typename T2>
+    struct ConcreteFactoryImpl__ : virtual AbstarctFactoryImpl__<T1>
+    {
+        T1* Create(T1) override { return new T2; }
+    };
+
+    template<typename Base, typename ...Ts>
+    struct ConcreteFactory__;
+
+    template <typename ...Ts1, typename ...Ts2>
+    struct ConcreteFactory__ <AbstractFactory__<Ts1...>, Ts2...> : AbstractFactory__<Ts1...>, ConcreteFactoryImpl__<Ts1, Ts2>...
+    {
+        using ConcreteFactoryImpl__<Ts1, Ts2>::Create...;
+    };
 
 #endif
 
@@ -1563,6 +1591,33 @@ int main()
   delete pArcher_;
   delete pPikeman_;
   delete pBalista_;
+
+  //version 3
+  std::cout << std::endl;
+  using EasyUnitFactory__   = typename ConcreteFactory__<AbstractFactory__<Archer, Warior, Pikeman, Balista>, EasyArcher, EasyWarior, EasyPikeman, EasyBalista>;
+  using HardUnitFactory__   = typename ConcreteFactory__<AbstractFactory__<Archer, Warior, Pikeman, Balista>, HardArcher, HardWarior, HardPikeman, HardBalista>;
+  using InsaneUnitFactory__ = typename ConcreteFactory__<AbstractFactory__<Archer, Warior, Pikeman, Balista>, InsaneArcher, InsaneWarior, InsanePikeman, InsaneBalista>;
+
+  auto dummyWarior = Warior(); std::cout << std::endl;
+  auto dummyArcher = Archer(); std::cout << std::endl;
+  auto dummyBalista = Balista(); std::cout << std::endl;
+  auto dummyPikeman = Pikeman(); std::cout << std::endl;
+
+  auto create = [&]<typename T,typename ... Ts1, typename ... Ts2>
+      (ConcreteFactory__<AbstractFactory__<Ts1...>, Ts2...>& factory, T Unit) 
+  {
+      return factory.Create(Unit);
+  };
+
+  EasyUnitFactory__   pFactory_E_;// = new EasyUnitFactory__;
+  HardUnitFactory__   pFactory_H_;// = new HardUnitFactory__;
+  InsaneUnitFactory__ pFactory_I_;// = new InsaneUnitFactory__;
+
+
+  auto pEasyWaryor = create(pFactory_E_, dummyWarior);
+  auto pEasyArcher = create(pFactory_E_, dummyArcher);
+  auto pHardBalista = create(pFactory_H_, dummyBalista);
+  auto pInsanePikeman = create(pFactory_I_, dummyPikeman);
 
 
 #endif
