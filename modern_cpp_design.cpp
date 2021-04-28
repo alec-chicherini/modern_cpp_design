@@ -1207,6 +1207,10 @@ struct unique
 
 #endif
 
+#ifdef PART11
+
+#endif
+
 int main()
 {
 #ifdef PART1
@@ -1628,6 +1632,10 @@ int main()
 #endif
 
 #ifdef PART10
+
+#endif
+
+#ifdef PART11
 
 #endif
  };
