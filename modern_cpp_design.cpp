@@ -1205,6 +1205,100 @@ struct unique
 
 #ifdef PART10
 
+    class Big;
+    class Small;
+
+    class Visitor {
+    public:
+        virtual void visit(Big* b)=0;
+        virtual void visit(Small* s)=0;
+        virtual ~Visitor() = default;
+    };
+
+    class Object
+    {
+    public:
+        virtual void accept(Visitor* v) = 0;
+        virtual std::string get_name() = 0;
+        virtual void set_name(std::string) = 0;
+        virtual ~Object() = default;
+    };
+
+    class Big :public Object
+    {
+    public:
+         Big() 
+        {
+            name= "Big Object";
+        };
+
+        void accept(Visitor* v) override
+        {
+            v->visit(this);
+        };
+
+        std::string get_name() 
+        {
+            return name;
+        };
+
+        void set_name(std::string str)
+        {
+            name = str;
+        };
+
+    private:
+        std::string name;
+    };
+
+    class Small :public Object
+    {
+    public:
+         Small() 
+        {
+            name = "Small Object";
+        };
+
+        void accept(Visitor* v) override
+        {
+            v->visit(this);
+        };
+
+        std::string get_name()
+        {
+            return name;
+        };
+
+        void set_name(std::string str)
+        {
+            name = str;
+        };
+
+    private:
+        std::string name;
+    };
+
+    class CaseVisitor:public Visitor
+    {
+    public:
+        void visit(Big* b) override
+        {
+            auto name = b->get_name();
+            for (auto& c : name)c = toupper(c);
+            b->set_name(name);
+        };
+
+        void visit(Small* b) override
+        {
+            auto name = b->get_name();
+            for (auto& c : name)c = tolower(c);
+            b->set_name(name);
+        };
+    };
+
+
+#include <vector>
+
 #endif
 
 #ifdef PART11
@@ -1632,6 +1726,27 @@ int main()
 #endif
 
 #ifdef PART10
+
+  std::vector<Object*> Objs;
+  
+  Objs.push_back(new Big());
+  Objs.push_back(new Small());
+  Objs.push_back(new Big());
+  Objs.push_back(new Small());
+
+  for (auto& o : Objs)
+      std::cout << o->get_name()<<"-";
+  std::cout << std::endl;
+
+  CaseVisitor* cv = new CaseVisitor;
+  for (auto& o : Objs) o->accept(cv);
+
+  for (auto& o : Objs)
+      std::cout << o->get_name() << "-";
+  std::cout << std::endl;
+
+
+
 
 #endif
 
