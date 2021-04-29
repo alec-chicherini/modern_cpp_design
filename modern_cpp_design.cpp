@@ -1204,7 +1204,7 @@ struct unique
 #endif
 
 #ifdef PART10
-
+    //version 1
     class Big;
     class Small;
 
@@ -1218,7 +1218,7 @@ struct unique
     class Object
     {
     public:
-        virtual void accept(Visitor* v) = 0;
+        virtual void accept(Visitor*) = 0;
         virtual std::string get_name() = 0;
         virtual void set_name(std::string) = 0;
         virtual ~Object() = default;
@@ -1229,7 +1229,7 @@ struct unique
     public:
          Big() 
         {
-            name= "Big Object";
+            name= "BiG ObjecT";
         };
 
         void accept(Visitor* v) override
@@ -1256,7 +1256,7 @@ struct unique
     public:
          Small() 
         {
-            name = "Small Object";
+            name = "SmaLL ObjEct";
         };
 
         void accept(Visitor* v) override
@@ -1296,8 +1296,40 @@ struct unique
         };
     };
 
-
 #include <vector>
+    void print(std::vector<Object*> objs)
+    {
+        for (auto& o : objs)
+            std::cout << o->get_name() << "-";
+        std::cout << std::endl;
+    }
+
+    
+    /*template<class T>
+    class Visitor_ {
+    public:
+        virtual void visit(T* b) = 0;
+        virtual ~Visitor_() = default;
+    };
+
+    template<class T>
+    class CaseVisitor_ :public Visitor_<T>
+    {
+        void visit(T* t)override
+        {
+            auto name = t->get_name();
+            for (auto& c : name)
+            {
+                if constexpr (std::is_same_v<T, Small>)c = tolower(c);
+                if constexpr (std::is_same_v<T, Big>)c = toupper(c);
+            }
+            b->set_name(name);
+        };
+    };*/
+
+   
+
+
 
 #endif
 
@@ -1734,19 +1766,21 @@ int main()
   Objs.push_back(new Big());
   Objs.push_back(new Small());
 
-  for (auto& o : Objs)
-      std::cout << o->get_name()<<"-";
-  std::cout << std::endl;
+  print(Objs);
 
   CaseVisitor* cv = new CaseVisitor;
   for (auto& o : Objs) o->accept(cv);
+  //same
+  /*for (auto& o : Objs) { 
+      
+      if(dynamic_cast<Big*>(o))
+      cv->visit(static_cast<Big*>(o));
 
-  for (auto& o : Objs)
-      std::cout << o->get_name() << "-";
-  std::cout << std::endl;
+      if (dynamic_cast<Small*>(o))
+          cv->visit(static_cast<Small*>(o));
+  }*/
 
-
-
+  print(Objs);
 
 #endif
 
