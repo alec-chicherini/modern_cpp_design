@@ -22,7 +22,8 @@ std::string boost_type_name()
 //PART8 Factory
 //PART9 Abstract Factory
 //PART10 Visitor
-#define PART10
+//PART11 Multimethod
+#define PART11
 
 #ifdef PART1
 
@@ -1334,6 +1335,97 @@ struct unique
 #endif
 
 #ifdef PART11
+	//overloaded
+	//void f(int x) {};
+	//void f(int x, int y) {};
+
+	//template<typename T>
+	//void f(T x) {};
+
+	//struct V {
+	//	virtual void f() {};
+	//};
+	//struct dV :V {
+	//	void f()override {};
+	//};
+
+
+	struct X {};
+	struct X1 :X {};
+	struct X2 :X {};
+    struct X3 :X {};
+    struct Y {};
+    struct Y1 :Y {};
+    struct Y2 :Y {};
+    struct Y3 :Y {};
+
+    std::string f(X1, Y1) { return "f(X1, Y1)"; }
+    std::string f(X1, Y2) { return "f(X1, Y2)"; }
+    std::string f(X1, Y3) { return "f(X1, Y3)"; }
+    std::string f(X2, Y1) { return "f(X2, Y1)"; }
+    std::string f(X2, Y2) { return "f(X2, Y2)"; }
+    std::string f(X2, Y3) { return "f(X2, Y3)"; }
+    std::string f(X3, Y1) { return "f(X3, Y1)"; }
+    std::string f(X3, Y2) { return "f(X3, Y2)"; }
+    std::string f(X3, Y3) { return "f(X3, Y3)"; }
+
+ //version x
+#include <map>
+#include <functional>
+    std::string f_X1_Y1() { return f(X1(), Y1());};
+    std::string f_X1_Y2() { return f(X1(), Y2()); };
+    std::string f_X1_Y3() { return f(X1(), Y3()); };
+    std::string f_X2_Y1() { return f(X2(), Y1()); };
+    std::string f_X2_Y2() { return f(X2(), Y2()); };
+    std::string f_X2_Y3() { return f(X2(), Y3()); };
+    std::string f_X3_Y1() { return f(X3(), Y1()); };
+    std::string f_X3_Y2() { return f(X3(), Y2()); };
+    std::string f_X3_Y3() { return f(X3(), Y3()); };
+
+    class crossExecutor
+    {
+        std::map<std::string, std::function<std::string(void)>> fMap;
+
+    public:
+           crossExecutor() {
+            fMap["X1Y1"] = f_X1_Y1;
+            fMap["X1Y2"] = f_X1_Y2;
+            fMap["X1Y3"] = f_X1_Y3;
+
+            fMap["X2Y1"] = f_X2_Y1;
+            fMap["X2Y2"] = f_X2_Y2;
+            fMap["X2Y3"] = f_X2_Y3;
+
+            fMap["X3Y1"] = f_X3_Y1;
+            fMap["X3Y2"] = f_X3_Y2;
+            fMap["X3Y3"] = f_X3_Y3;
+        };
+           std::string exec(std::string left, std::string right) 
+           {
+               std::string result;
+
+               try 
+               { 
+                     result = fMap.at(left + right)();
+                     return result;
+               }
+               catch (std::out_of_range e)
+               {
+                   std::cout << "WARNING: cross function doesn`t exist. Left - Right value changed." << std::endl;
+               };
+
+               try 
+               {
+                   result = fMap.at(right + left)();
+                   return result;
+               }
+               catch (std::out_of_range e)
+               {
+                   std::cout << "ERROR: cross function doesn`t exist" << std::endl;
+               };
+           }
+    };
+
 
 #endif
 
@@ -1785,6 +1877,25 @@ int main()
 #endif
 
 #ifdef PART11
+
+  //f(1);
+  //f(1.2f);
+  //V v; v.f();
+  //dV dv; dv.f();
+
+  std::vector<std::string> Xs = {"X1","X2","X3"};
+  std::vector<std::string> Ys = {"Y1","Y2","Y3"};
+
+  crossExecutor cE;
+
+  for (auto& x : Xs)
+      for (auto& y : Ys) 
+      {
+          std::cout << "x = " << x << " y = " << y << " call ->" << cE.exec(x, y) << std::endl;
+          std::cout << "y = " << y << " x = " << x << " call ->" << cE.exec(y, x) << std::endl;
+      }
+
+  cE.exec("A", "B");
 
 #endif
  };
