@@ -1404,7 +1404,7 @@ struct unique
            std::string exec(std::string left, std::string right) 
            {
                std::string result;
-
+            
                try 
                { 
                      result = fMap.at(left + right)();
@@ -1412,7 +1412,7 @@ struct unique
                }
                catch (std::out_of_range e)
                {
-                   std::cout << "WARNING: cross function doesn`t exist. Left - Right value changed." << std::endl;
+                  // std::cout<<"WARNING: cross function doesn`t exist. Left - Right value changed";
                };
 
                try 
@@ -1422,7 +1422,8 @@ struct unique
                }
                catch (std::out_of_range e)
                {
-                   std::cout << "ERROR: cross function doesn`t exist" << std::endl;
+                   std::cout << "ERROR: cross function: " <<left<<right<< " or "<<right<<left<<" doesn`t exist" << std::endl;
+                   return std::string(e.what());
                };
            }
     };
@@ -1896,6 +1897,7 @@ int main()
           std::cout << "y = " << y << " x = " << x << " call ->" << cE.exec(y, x) << std::endl;
       }
 
+  cE.exec("X1", "X2");
   cE.exec("A", "B");
 
 #endif
